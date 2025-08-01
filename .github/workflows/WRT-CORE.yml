@@ -68,13 +68,13 @@ jobs:
     name: ${{inputs.WRT_SOURCE}}
     runs-on: ubuntu-22.04
     steps:
-      - name: Install BC
+      - name: 安装 BC
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo -E apt -yqq install bc
 
-      - name: Free Disk Space
+      - name: 释放磁盘空间
         uses: endersonmenezes/free-disk-space@v2
         with:
           remove_android: true
@@ -87,9 +87,9 @@ jobs:
           remove_folders: "/usr/share/swift /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/share/chromium /usr/local/share/powershell"
           testing: false
 
-      - name: Checkout Projects
+      - name: 检测项目
         uses: actions/checkout@main
-      - name: Initialization Environment
+      - name: 初始化编译环境
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -108,7 +108,7 @@ jobs:
 #          sudo chown $USER:$USER /mnt/build_wrt
 #          sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
 
-      - name: Initialization Values
+      - name: 初始化变量
         run: |
           echo "WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d-%H.%M.%S")" >> $GITHUB_ENV
           echo "WRT_MARK=$(echo $GITHUB_REPOSITORY | cut -d '/' -f 1)" >> $GITHUB_ENV
@@ -123,17 +123,17 @@ jobs:
             echo "WRT_ARCH=$WRT_ARCH" >> $GITHUB_ENV
           }
           echo "$WRT_REPO/$WRT_BRANCH" > "$GITHUB_WORKSPACE/repo_flag"
-      - name: Clone Code
+      - name: 克隆库
         run: |
           git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
 
           cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
 
-      - name: Check Scripts
+      - name: 检测脚本
         run: |
           find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
 
-      - name: Cache Dependencies
+      - name: 激活缓存
         uses: actions/cache@v4
         with:
           path: |
@@ -143,7 +143,7 @@ jobs:
           restore-keys: |
             ${{ env.WRT_ARCH }}-${{ hashFiles('**/repo_flag') }}-
 
-      - name: Refresh the cache
+      - name: 刷新缓存
         run: |
           if [ -d "./wrt/staging_dir" ]; then
             find "./wrt/staging_dir" -type d -name "stamp" -not -path "*target*" | while read -r dir; do
@@ -153,21 +153,21 @@ jobs:
 
 
 
-      - name: Update Feeds
+      - name: 更新源
         run: |
           cd ./wrt/
 
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Custom Packages
+      - name: 自定义软件包
         run: |
           cd ./wrt/package/
 
           $GITHUB_WORKSPACE/Scripts/Packages.sh
           $GITHUB_WORKSPACE/Scripts/Handles.sh
 
-      - name: Custom Settings
+      - name: 自定义设置
         run: |
           . $GITHUB_WORKSPACE/Scripts/function.sh
           cd ./wrt/
@@ -178,21 +178,21 @@ jobs:
 
           make defconfig -j$(nproc) && make clean -j$(nproc)
 
-      - name: Download Packages
+      - name: 下载源
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
 
           make download -j$(nproc)
 
-      - name: Compile Firmware
+      - name: 开始编译
         if: env.WRT_TEST != 'true'
         run: |
           cd ./wrt/
 
           make -j$(nproc) || make -j1 V=s
 
-      - name: Delete Old Cache
+      - name: 删除旧缓存
         run: |
           # 获取缓存列表并删除
           gh cache list --key ${{ env.WRT_ARCH }}-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
@@ -203,7 +203,7 @@ jobs:
           echo "ccache: $(du -sh ./wrt/.ccache | cut -f 1)"
           echo "staging: $(du -sh ./wrt/staging_dir | cut -f 1)"
 
-      - name: Machine Information
+      - name: 输出机器信息
         run: |
           cd ./wrt/
 
@@ -215,7 +215,7 @@ jobs:
           du -h --max-depth=1
           echo "======================="
 
-      - name: Package Firmware
+      - name: 打包固件
         run: |
           cd ./wrt/ && mkdir ./upload/
 
@@ -239,7 +239,7 @@ jobs:
             make clean -j$(nproc)
           fi
 
-      - name: Release Firmware
+      - name: 上传固件版本
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{env.CI_NAME}}-${{env.WRT_CONFIG}}_${{env.WRT_DATE}}
